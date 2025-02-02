@@ -1,8 +1,3 @@
----
-
-### الكود الكامل بعد التعديل:
-
-```python
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -342,6 +337,12 @@ class EnhancedTradingBot:
             # تحويل الفئة إلى اتجاه
             direction_map = {0: 'short', 1: 'long', 2: 'neutral'}
             prediction_direction = direction_map[predicted_class]
+            
+            # التحقق من السيولة قبل تنفيذ التداول
+            amount = self.trade_executor.calculate_amount(confidence)  # تقدير الكمية المقصودة للتداول
+            if not self.risk_manager.check_liquidity(symbol, amount):
+                logging.warning(f"Insufficient liquidity for {symbol}. Skipping trade.")
+                return None
 
             return {
                 'symbol': symbol,
@@ -395,7 +396,12 @@ class EnhancedTradingBot:
                 analyses = self.analyze_symbols_concurrently()
                 for analysis in analyses:
                     if analysis:
-                        self.trade_executor.execute_trade(analysis, analysis['symbol'])
+                        # التحقق من السيولة مرة أخرى قبل تنفيذ التداول
+                        amount = self.trade_executor.calculate_amount(analysis['confidence'])
+                        if self.risk_manager.check_liquidity(analysis['symbol'], amount):
+                            self.trade_executor.execute_trade(analysis, analysis['symbol'])
+                        else:
+                            logging.warning(f"Insufficient liquidity for {analysis['symbol']} at execution time. Skipping trade.")
                 
                 time.sleep(3600)  # تشغيل كل ساعة
             except KeyboardInterrupt:
@@ -445,4 +451,3 @@ if __name__ == "__main__":
         bot.run()
     else:
         logging.error("Pre-run tests failed. Exiting...")
-``` 
